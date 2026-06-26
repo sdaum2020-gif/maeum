@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-pretendard: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+    Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", sans-serif;
+}
+
+body {
+  font-family: var(--font-pretendard);
+  background: linear-gradient(135deg, #fffff0 0%, #f5f5dc 100%);
+  min-height: 100vh;
+}
+
+/* 따뜻한 힐링 스타일 */
+@layer components {
+  .card {
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm p-6 border border-beige/50;
+  }
+
+  .btn-primary {
+    @apply bg-soft-green/80 hover:bg-soft-green text-warm-brown font-medium py-3 px-6 rounded-full transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+
+  .btn-secondary {
+    @apply bg-cream/80 hover:bg-cream text-warm-brown font-medium py-2 px-4 rounded-full transition-all duration-200 border border-soft-yellow/50;
+  }
+
+  .emotion-tag {
+    @apply inline-block bg-soft-yellow/40 text-warm-brown text-sm px-3 py-1 rounded-full;
+  }
+
+  .garden-ground {
+    @apply bg-gradient-to-b from-amber-100/50 to-amber-200/50 rounded-2xl;
+  }
+}
+
+/* 부드러운 애니메이션 */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes grow {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+@keyframes bounceSubtle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.05); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-grow {
+  animation: grow 0.6s ease-out forwards;
+}
+
+.animate-sway {
+  animation: sway 2.5s ease-in-out infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounceSubtle 2s ease-in-out infinite;
+}
+
+/* 정원 관련 스타일 추가 */
+@layer utilities {
+  .garden-pattern {
+    background-image: 
+      radial-gradient(circle at 20% 20%, rgba(144, 238, 144, 0.05) 0px, transparent 50px),
+      radial-gradient(circle at 80% 60%, rgba(255, 250, 205, 0.1) 0px, transparent 40px);
+    background-color: transparent;
+  }
+
+  .text-plant {
+    color: #5a7c3a;
+  }
+
+  .text-soil {
+    color: #8b7355;
+  }
+}
+
+/* 물방울 효과 */
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.5; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.animate-ripple {
+  animation: ripple 0.8s ease-out;
+}
