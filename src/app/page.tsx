@@ -12,7 +12,7 @@ import { grantEntryReward, grantDeepEmotionReward } from "@/lib/waterRewards";
 type ViewType = "input" | "result" | "garden" | "report";
 
 export default function Home() {
-  const [currentView, setCurrentView] = useState<ViewType>("input");
+  const [currentView, setCurrentView] = useState<ViewType>("garden");
   const [lastEntry, setLastEntry] = useState<DiaryEntry | null>(null);
   const [isMobile, setIsMobile] = useState(true);
 
@@ -70,7 +70,7 @@ export default function Home() {
         <div className="max-w-md mx-auto flex justify-around items-center py-2">
           <NavButton
             icon="🌱"
-            label="기록"
+            label="기록하기"
             isActive={currentView === "input"}
             onClick={() => setCurrentView("input")}
           />
@@ -81,8 +81,8 @@ export default function Home() {
             onClick={() => setCurrentView("garden")}
           />
           <NavButton
-            icon="📊"
-            label="리포트"
+            icon="📝"
+            label="기록보기"
             isActive={currentView === "report"}
             onClick={() => setCurrentView("report")}
           />

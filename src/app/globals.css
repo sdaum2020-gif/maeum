@@ -15,6 +15,444 @@ body {
   min-height: 100vh;
 }
 
+.mind-garden-home {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 244, 208, 0.72) 0 8%, transparent 18%),
+    radial-gradient(ellipse at 50% 28%, rgba(255, 238, 196, 0.52) 0 16%, transparent 34%),
+    linear-gradient(to bottom, #cfe6f1 0%, #f8dfbd 24%, #a9d978 25%, #9ece62 58%, #87bd52 100%);
+}
+
+.mind-garden-home::before {
+  content: "";
+  position: absolute;
+  inset: 25% 0 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 250, 220, 0.36) 0 18%, transparent 48%),
+    linear-gradient(to bottom, rgba(255, 245, 183, 0.16), transparent 22%),
+    radial-gradient(circle at 12% 82%, rgba(74, 123, 59, 0.18) 0 10%, transparent 22%),
+    radial-gradient(circle at 88% 88%, rgba(68, 116, 55, 0.2) 0 12%, transparent 25%);
+}
+
+.mind-garden-home::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 22% 63%, rgba(255, 255, 255, 0.28) 0 1px, transparent 2px),
+    radial-gradient(circle at 70% 72%, rgba(255, 251, 188, 0.34) 0 1px, transparent 2px),
+    radial-gradient(circle at 45% 86%, rgba(255, 255, 255, 0.22) 0 1px, transparent 2px);
+  background-size: 86px 72px, 112px 90px, 148px 118px;
+  opacity: 0.52;
+}
+
+.garden-action-button {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-width: 2px;
+  border-radius: 9999px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 6px 0 rgba(139, 115, 85, 0.11), 0 8px 18px rgba(139, 115, 85, 0.12);
+  backdrop-filter: blur(8px);
+  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.garden-action-button:disabled {
+  cursor: not-allowed;
+  box-shadow: 0 4px 0 rgba(139, 115, 85, 0.06), 0 6px 14px rgba(139, 115, 85, 0.06);
+}
+
+.garden-title {
+  position: absolute;
+  left: 24px;
+  top: 70px;
+  z-index: 10;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 30px;
+  font-weight: 900;
+  text-shadow: 0 2px 8px rgba(128, 150, 129, 0.26);
+}
+
+.garden-cloud {
+  position: absolute;
+  z-index: 2;
+  height: 34px;
+  border-radius: 9999px;
+  background: rgba(255, 244, 222, 0.48);
+  filter: blur(0.2px);
+  pointer-events: none;
+}
+
+.garden-cloud::before,
+.garden-cloud::after {
+  content: "";
+  position: absolute;
+  bottom: 9px;
+  border-radius: 9999px;
+  background: inherit;
+}
+
+.garden-cloud::before {
+  left: 18px;
+  width: 42px;
+  height: 42px;
+}
+
+.garden-cloud::after {
+  right: 20px;
+  width: 52px;
+  height: 52px;
+}
+
+.garden-cloud-left {
+  left: 15%;
+  top: 15%;
+  width: 128px;
+}
+
+.garden-cloud-right {
+  right: 22%;
+  top: 20%;
+  width: 160px;
+  opacity: 0.66;
+}
+
+.garden-fence {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 27%;
+  z-index: 4;
+  height: 38px;
+  pointer-events: none;
+  opacity: 0.34;
+  background:
+    linear-gradient(to bottom, transparent 13px, rgba(166, 139, 84, 0.58) 13px 18px, transparent 18px),
+    repeating-linear-gradient(to right, transparent 0 28px, rgba(177, 147, 87, 0.62) 28px 35px, transparent 35px 44px);
+}
+
+.garden-shrub {
+  position: absolute;
+  top: 23%;
+  z-index: 5;
+  width: 31%;
+  height: 12%;
+  border-radius: 50% 50% 42% 42%;
+  pointer-events: none;
+  opacity: 0.5;
+  background:
+    radial-gradient(circle at 18% 56%, #7db45b 0 17%, transparent 18%),
+    radial-gradient(circle at 38% 40%, #8cc568 0 20%, transparent 21%),
+    radial-gradient(circle at 64% 52%, #77ad55 0 18%, transparent 19%),
+    radial-gradient(circle at 84% 44%, #9bcb72 0 16%, transparent 17%);
+}
+
+.garden-shrub-left {
+  left: -5%;
+}
+
+.garden-shrub-right {
+  right: -6%;
+  transform: scaleX(-1);
+}
+
+.garden-grass-texture {
+  position: absolute;
+  inset: 34% 0 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 20% 35%, rgba(255, 255, 255, 0.18) 0 9%, transparent 27%),
+    radial-gradient(ellipse at 68% 52%, rgba(111, 155, 69, 0.12) 0 12%, transparent 31%),
+    repeating-linear-gradient(102deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 28px);
+  opacity: 0.72;
+}
+
+.plant-object-wrapper {
+  width: 104px;
+}
+
+.plant-object-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+  filter: none;
+}
+
+.daily-report-page {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 250, 205, 0.72) 0 7%, transparent 18%),
+    radial-gradient(circle at 88% 12%, rgba(144, 238, 144, 0.2) 0 9%, transparent 22%),
+    linear-gradient(180deg, #fffdf0 0%, #f6f5dc 46%, #edf7df 100%);
+}
+
+.report-header {
+  position: relative;
+}
+
+.report-header::before,
+.report-header::after {
+  content: "";
+  position: absolute;
+  top: 18px;
+  width: 42px;
+  height: 58px;
+  pointer-events: none;
+  opacity: 0.45;
+  background:
+    radial-gradient(ellipse at 48% 18%, #a9bf7b 0 12%, transparent 13%),
+    radial-gradient(ellipse at 28% 42%, #b7ca8f 0 13%, transparent 14%),
+    radial-gradient(ellipse at 66% 48%, #9caf6f 0 12%, transparent 13%),
+    linear-gradient(110deg, transparent 48%, #91a45f 49% 52%, transparent 53%);
+}
+
+.report-header::before {
+  left: 18px;
+  transform: rotate(-18deg);
+}
+
+.report-header::after {
+  right: 18px;
+  transform: scaleX(-1) rotate(-18deg);
+}
+
+.report-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(224, 205, 169, 0.62);
+  border-radius: 26px;
+  background: rgba(255, 253, 240, 0.82);
+  padding: 20px;
+  box-shadow: 0 12px 30px rgba(139, 115, 85, 0.11);
+  backdrop-filter: blur(10px);
+}
+
+.report-topbar {
+  border: 1px solid rgba(224, 205, 169, 0.54);
+  border-radius: 26px;
+  background: rgba(255, 253, 240, 0.76);
+  padding: 14px;
+  box-shadow: 0 10px 24px rgba(139, 115, 85, 0.09);
+  backdrop-filter: blur(10px);
+}
+
+.report-icon-button {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.58);
+  color: rgba(139, 115, 85, 0.82);
+  font-size: 24px;
+  font-weight: 900;
+  box-shadow: 0 5px 12px rgba(139, 115, 85, 0.08);
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.report-icon-button:active {
+  transform: scale(0.96);
+}
+
+.report-view-button {
+  min-height: 36px;
+  border-radius: 9999px;
+  color: rgba(139, 115, 85, 0.48);
+  font-size: 17px;
+  font-weight: 900;
+  transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.report-view-button.is-active {
+  background: rgba(144, 238, 144, 0.35);
+  color: rgba(91, 124, 58, 0.95);
+  box-shadow: 0 5px 12px rgba(139, 115, 85, 0.08);
+}
+
+.report-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.report-calendar-day,
+.report-calendar-empty {
+  aspect-ratio: 1 / 1;
+}
+
+.report-calendar-day {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  color: rgba(139, 115, 85, 0.64);
+  font-size: 13px;
+  font-weight: 800;
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.report-calendar-day.has-entry {
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 5px 12px rgba(139, 115, 85, 0.07);
+}
+
+.report-calendar-day.is-today {
+  background: rgba(255, 250, 205, 0.62);
+  color: rgba(139, 115, 85, 0.92);
+}
+
+.report-calendar-day:active {
+  transform: scale(0.96);
+}
+
+.report-day-number {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  z-index: 1;
+}
+
+.report-flower-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.report-calendar-day .report-flower-mark {
+  margin-top: 12px;
+}
+
+.report-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.42);
+  padding: 12px;
+}
+
+.report-list-card {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid rgba(224, 205, 169, 0.62);
+  border-radius: 26px;
+  background: rgba(255, 253, 240, 0.82);
+  padding: 18px;
+  box-shadow: 0 10px 24px rgba(139, 115, 85, 0.09);
+  backdrop-filter: blur(10px);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.report-list-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 6px 16px rgba(139, 115, 85, 0.08);
+}
+
+.representative-card {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.68) 0 9%, transparent 28%),
+    linear-gradient(135deg, rgba(245, 229, 255, 0.9) 0%, rgba(255, 245, 231, 0.84) 100%);
+  border-color: rgba(206, 181, 217, 0.56);
+}
+
+.report-flower-portrait {
+  display: flex;
+  width: 118px;
+  min-width: 118px;
+  height: 132px;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed rgba(139, 115, 85, 0.18);
+  border-radius: 48% 48% 44% 44%;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.9) 0 28%, transparent 62%),
+    rgba(255, 250, 240, 0.66);
+  box-shadow: inset 0 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+.report-soft-chip,
+.report-flower-chip,
+.report-flow-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(224, 205, 169, 0.56);
+  background: rgba(255, 255, 255, 0.56);
+  color: rgba(139, 115, 85, 0.76);
+  box-shadow: 0 4px 10px rgba(139, 115, 85, 0.06);
+}
+
+.report-soft-chip {
+  border-radius: 9999px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.report-flower-chip {
+  gap: 7px;
+  border-radius: 9999px;
+  padding: 10px 13px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.report-flow-chip {
+  min-height: 58px;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 20px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 250, 205, 0.44) 0 18%, transparent 38%),
+    rgba(255, 255, 255, 0.48);
+  font-size: 13px;
+}
+
+.sentence-card {
+  background:
+    radial-gradient(circle at 8% 12%, rgba(255, 210, 204, 0.3) 0 8%, transparent 22%),
+    rgba(255, 253, 240, 0.86);
+}
+
+.reward-card {
+  background:
+    radial-gradient(circle at 18% 32%, rgba(184, 228, 255, 0.36) 0 11%, transparent 27%),
+    linear-gradient(135deg, rgba(255, 253, 240, 0.9), rgba(236, 247, 221, 0.88));
+}
+
+@media (max-width: 380px) {
+  .report-flower-portrait {
+    width: 92px;
+    min-width: 92px;
+    height: 112px;
+  }
+
+  .report-flower-portrait span {
+    font-size: 48px;
+  }
+}
+
 /* 따뜻한 힐링 스타일 */
 @layer components {
   .card {
