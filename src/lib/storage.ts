@@ -412,6 +412,26 @@ export function getGardenState(): GardenState {
 }
 
 /**
+ * 특정 기록을 삭제합니다.
+ * id 기준으로 삭제하며, id가 없으면 createdAt을 fallback으로 사용합니다.
+ * @param entryId 삭제할 기록의 id
+ * @returns 삭제 성공 여부
+ */
+export function deleteEntry(entryId: string): boolean {
+  if (typeof window === "undefined") return false;
+  const entries = getEntries();
+  const filteredEntries = entries.filter((entry) => entry.id !== entryId);
+  
+  // 삭제 전후 개수가 같으면 삭제 실패 (해당 id 없음)
+  if (filteredEntries.length === entries.length) {
+    return false;
+  }
+  
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredEntries));
+  return true;
+}
+
+/**
  * 모든 기록을 삭제합니다. (테스트용)
  */
 export function clearEntries(): void {

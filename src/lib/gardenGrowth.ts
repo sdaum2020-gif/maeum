@@ -25,32 +25,32 @@ export const SPROUT_TO_BLOOM_MS = 24 * 60 * 60 * 1000;
 export const INTENSITY_PROFILES: Record<number, GrowthProfile & { bloomScale: number }> = {
   1: {
     intensity: 1,
-    seedToSproutMs: 10 * 60 * 1000,        // 10분
-    sproutToBloomMs: 20 * 60 * 1000,       // 20분
+    seedToSproutMs: 5 * 60 * 1000,         // 5분
+    sproutToBloomMs: 10 * 60 * 1000,       // 10분 (총 15분)
     bloomScale: 0.85,
   },
   2: {
     intensity: 2,
-    seedToSproutMs: 20 * 60 * 1000,        // 20분
-    sproutToBloomMs: 40 * 60 * 1000,       // 40분
+    seedToSproutMs: 10 * 60 * 1000,        // 10분
+    sproutToBloomMs: 20 * 60 * 1000,       // 20분 (총 30분)
     bloomScale: 0.95,
   },
   3: {
     intensity: 3,
-    seedToSproutMs: 40 * 60 * 1000,        // 40분
-    sproutToBloomMs: 80 * 60 * 1000,       // 80분
+    seedToSproutMs: 25 * 60 * 1000,        // 25분
+    sproutToBloomMs: 50 * 60 * 1000,       // 50분 (총 1시간 15분)
     bloomScale: 1.05,
   },
   4: {
     intensity: 4,
-    seedToSproutMs: 60 * 60 * 1000,        // 60분 (1시간)
-    sproutToBloomMs: 180 * 60 * 1000,      // 180분 (3시간)
+    seedToSproutMs: 50 * 60 * 1000,        // 50분
+    sproutToBloomMs: 100 * 60 * 1000,      // 100분 (총 2시간 30분)
     bloomScale: 1.18,
   },
   5: {
     intensity: 5,
-    seedToSproutMs: 120 * 60 * 1000,       // 120분 (2시간)
-    sproutToBloomMs: 360 * 60 * 1000,      // 360분 (6시간)
+    seedToSproutMs: 80 * 60 * 1000,        // 80분
+    sproutToBloomMs: 160 * 60 * 1000,      // 160분 (총 4시간)
     bloomScale: 1.3,
   },
 };

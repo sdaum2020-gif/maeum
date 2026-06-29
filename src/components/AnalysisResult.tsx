@@ -49,7 +49,7 @@ export default function AnalysisResult({ entry, onClose, onGoToGarden }: Analysi
         <div className="flex items-center justify-center gap-2">
           <span className="text-sm text-warm-brown/60">감정 깊이</span>
           <div className="flex gap-1">
-            {Array.from({ length: 10 }, (_, i) => (
+            {Array.from({ length: 5 }, (_, i) => (
               <div
                 key={i}
                 className={`w-2 h-2 rounded-full ${
@@ -60,7 +60,7 @@ export default function AnalysisResult({ entry, onClose, onGoToGarden }: Analysi
               />
             ))}
           </div>
-          <span className="text-sm text-warm-brown/60">{analysis.intensity}/10</span>
+          <span className="text-sm text-warm-brown/60">{analysis.intensity}/5</span>
         </div>
       </div>
 

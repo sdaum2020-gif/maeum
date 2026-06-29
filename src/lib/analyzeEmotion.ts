@@ -1,5 +1,6 @@
-import { EmotionAnalysis, GardenReward, GrowthStage, FlowerPosition, GrowthProfile } from "@/types/emotion";
+import { EmotionAnalysis, GardenReward, GrowthStage, FlowerPosition, GrowthProfile, DiaryEntry } from "@/types/emotion";
 import { INTENSITY_PROFILES } from "./gardenGrowth";
+import { getEntries } from "./storage";
 
 // 감정별 꽃 기본 정보 (plantedAt은 동적으로 설정)
 interface FlowerBaseInfo {
@@ -156,12 +157,139 @@ export function fakeAnalyzeEmotion(text: string): EmotionAnalysis {
   };
 }
 
+// AI 응답 구조 (서버 API에서 반환하는 형태)
+interface AIAnalyzeResponse {
+  mainEmotion: string;
+  subEmotions: string[];
+  intensity: number; // 1~5
+  empathyMessage: string;
+  gardenReward: {
+    type: string;
+    name: string;
+    description: string;
+  };
+}
+
+// recentContext 타입 정의
+interface RecentContext {
+  date: string;
+  mainEmotion: string;
+  contentPreview: string;
+}
+
 /**
- * 나중에 AI 연결 시 이 함수를 실제 API 호출로 교체하세요.
- * 예: OpenRouter API를 사용한 감정 분석
+ * localStorage에서 최근 기록 최대 3개를 recentContext로 추출합니다.
+ * 현재 입력은 제외하고, 최신순으로 정렬하여 날짜/감정/내용 미리보기를 반환합니다.
+ */
+function buildRecentContext(): RecentContext[] {
+  try {
+    const entries: DiaryEntry[] = getEntries();
+    if (entries.length === 0) return [];
+
+    // 최신순 정렬 후 3개 선택
+    const recent = entries
+      .slice()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 3);
+
+    return recent.map((entry) => ({
+      date: entry.createdAt.split("T")[0],
+      mainEmotion: entry.analysis.mainEmotion,
+      contentPreview: entry.content.length > 80 ? entry.content.slice(0, 80) + "…" : entry.content,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * OpenRouter AI 기반 감정 분석.
+ * /api/analyze-emotion 서버 API를 호출합니다.
+ * 실패 시 자동으로 fakeAnalyzeEmotion으로 fallback합니다.
+ */
+async function analyzeEmotionWithAI(text: string): Promise<EmotionAnalysis> {
+  const recentContext = buildRecentContext();
+
+  const response = await fetch("/api/analyze-emotion", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: text, recentContext }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`AI 분석 실패: ${response.status}`);
+  }
+
+  const aiData: AIAnalyzeResponse = await response.json();
+
+  // 유효성 체크: 허용 목록 확인
+  const ALLOWED_EMOTIONS = ["불안", "슬픔", "분노", "기쁨", "지침", "복잡함"];
+  if (!ALLOWED_EMOTIONS.includes(aiData.mainEmotion)) {
+    throw new Error(`AI 분석 실패: 허용되지 않은 감정 "${aiData.mainEmotion}"`);
+  }
+
+  // intensity 체크: 1~5 정수
+  if (
+    typeof aiData.intensity !== "number" ||
+    !Number.isInteger(aiData.intensity) ||
+    aiData.intensity < 1 ||
+    aiData.intensity > 5
+  ) {
+    throw new Error(`AI 분석 실패: intensity가 1~5 범위가 아님`);
+  }
+
+  // gardenReward.type 체크
+  if (!aiData.gardenReward || !aiData.gardenReward.type) {
+    throw new Error("AI 분석 실패: gardenReward.type이 누락됨");
+  }
+
+  // intensity(1~5)에 해당하는 성장 프로필 가져오기
+  const profile = INTENSITY_PROFILES[aiData.intensity] || INTENSITY_PROFILES[3];
+  const { bloomScale, ...growthProfile } = profile;
+
+  // 꽃 기본 정보 (emoji 보강용)
+  const baseInfo = FLOWER_BASE_INFO[aiData.mainEmotion] || FLOWER_BASE_INFO["복잡함"];
+
+  // 랜덤 위치 생성
+  const now = new Date().toISOString();
+  const position: FlowerPosition = {
+    x: Math.random() * 80 + 8,
+    y: Math.random() * 40 + 45,
+    scale: Math.random() * 0.4 + 0.85,
+    rotation: (Math.random() - 0.5) * 20,
+    zIndex: Math.floor(Math.random() * 40 + 45),
+  };
+
+  const gardenReward: GardenReward = {
+    type: aiData.gardenReward.type,
+    name: aiData.gardenReward.name || baseInfo.name,
+    emoji: baseInfo.emoji,
+    description: aiData.gardenReward.description || baseInfo.description,
+    growthStage: "seed",
+    plantedAt: now,
+    position,
+    growthProfile,
+    bloomScale,
+  };
+
+  return {
+    mainEmotion: aiData.mainEmotion as EmotionAnalysis["mainEmotion"],
+    subEmotions: aiData.subEmotions || [],
+    intensity: aiData.intensity,
+    empathyMessage: aiData.empathyMessage,
+    gardenReward,
+  };
+}
+
+/**
+ * 감정 분석 메인 함수.
+ * 먼저 AI 분석을 시도하고, 실패 시 기존 fakeAnalyzeEmotion으로 fallback합니다.
  */
 export async function analyzeEmotion(text: string): Promise<EmotionAnalysis> {
-  // 현재는 mock 함수 사용
-  // 나중에는 여기에 API 호출 코드 추가
-  return fakeAnalyzeEmotion(text);
+  try {
+    return await analyzeEmotionWithAI(text);
+  } catch (error) {
+    console.warn("AI 분석 실패, fallback으로 전환:", (error as Error).message);
+    return fakeAnalyzeEmotion(text);
+  }
 }

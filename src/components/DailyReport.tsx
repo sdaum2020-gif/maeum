@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { applyAutoGrowth, getEntriesWithGrowth } from "@/lib/storage";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { applyAutoGrowth, getEntriesWithGrowth, deleteEntry } from "@/lib/storage";
 import { DiaryEntry, GardenReward, GrowthStage } from "@/types/emotion";
 import { claimReportReward, getTodayRewardHistory } from "@/lib/waterRewards";
+import {
+  buildEntrySignature,
+  getCachedDailySentence,
+  saveDailySentenceToCache,
+  invalidateDailySentenceCache,
+} from "@/lib/dailySentenceCache";
 
 type ReportView = "calendar" | "stats" | "list" | "detail";
 
@@ -62,12 +68,17 @@ function getStageEmoji(stage: GrowthStage, fallbackEmoji: string) {
 
 function getRepresentativeEmotion(entries: DiaryEntry[]) {
   if (entries.length === 0) return null;
-  const counts: Record<string, number> = {};
+  
+  // intensity(감정 깊이)를 가중치로 반영
+  // 각 감정의 intensity 합계를 계산하여 가장 깊은 감정을 대표감정으로 선택
+  const intensitySum: Record<string, number> = {};
   entries.forEach((entry) => {
     const emotion = entry.analysis.mainEmotion;
-    counts[emotion] = (counts[emotion] || 0) + 1;
+    const intensity = entry.analysis.intensity ?? 3; // 기본값 3
+    intensitySum[emotion] = (intensitySum[emotion] || 0) + intensity;
   });
-  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+  
+  return Object.entries(intensitySum).sort((a, b) => b[1] - a[1])[0][0];
 }
 
 function getRepresentativeReward(entries: DiaryEntry[]): GardenReward | null {
@@ -95,9 +106,6 @@ function getDailyMessage(entries: DiaryEntry[]) {
   return messages[mainEmotion || ""] || "오늘도 마음을 그냥 지나치지 않고 바라봐준 하루였어요.";
 }
 
-function getSnippet(content: string) {
-  return content.length > 42 ? `${content.slice(0, 42)}...` : content;
-}
 
 function FlowerMark({ reward, emotion, size = "sm" }: { reward?: GardenReward | null; emotion?: string | null; size?: "sm" | "md" | "lg" }) {
   const fallback = emotion ? EMOTION_FLOWER[emotion] : null;
@@ -123,6 +131,20 @@ function FlowerMark({ reward, emotion, size = "sm" }: { reward?: GardenReward | 
   );
 }
 
+const FALLBACK_SENTENCES = [
+  "오늘도 마음을 그냥 지나치지 않고 바라봐준 하루였어요.",
+  "기록한 만큼 마음정원은 조금씩 자라고 있어요.",
+  "지나간 하루의 마음이 조용히 정원에 내려앉았네요.",
+  "그날의 감정이 마음정원에 잔잔한 흔적을 남겼어요.",
+];
+
+function pickFallbackSentence(entries: DiaryEntry[]): string {
+  if (entries.length === 0) return FALLBACK_SENTENCES[0];
+  const idx =
+    new Date(entries[0].createdAt).getDate() % FALLBACK_SENTENCES.length;
+  return FALLBACK_SENTENCES[idx];
+}
+
 export default function DailyReport() {
   const [allEntries, setAllEntries] = useState<DiaryEntry[]>([]);
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -134,6 +156,20 @@ export default function DailyReport() {
   const [reportRewardClaimed, setReportRewardClaimed] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [showToast, setShowToast] = useState(false);
+
+  // 그날의 한 문장 AI 생성 관련 상태
+  const [dailySentence, setDailySentence] = useState<string | null>(null);
+  const [isSentenceLoading, setIsSentenceLoading] = useState(false);
+  const inFlightRef = useRef<string | null>(null); // 중복 호출 방지
+
+  // 월간 기록 목록용 dailySentence 상태
+  const [monthlySentences, setMonthlySentences] = useState<Record<string, string>>({});
+  const [monthlyInFlightDates, setMonthlyInFlightDates] = useState<Set<string>>(new Set());
+  const monthlyInFlightRef = useRef<Set<string>>(new Set());
+
+  // 삭제 관련 상태
+  const [deleteTargetEntry, setDeleteTargetEntry] = useState<DiaryEntry | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     applyAutoGrowth();
@@ -164,6 +200,91 @@ export default function DailyReport() {
 
   const selectedEntries = selectedDate ? entriesByDate[selectedDate] || [] : [];
 
+  // 선택된 날짜가 바뀌면 그날의 한 문장 상태 초기화
+  useEffect(() => {
+    setDailySentence(null);
+    setIsSentenceLoading(false);
+    inFlightRef.current = null;
+  }, [selectedDate]);
+
+  // 그날의 한 문장을 AI로 생성 (캐시 우선)
+  useEffect(() => {
+    if (!selectedDate) return;
+    if (selectedEntries.length === 0) return; // 빈 상태면 호출하지 않음
+
+    const signature = buildEntrySignature(selectedEntries.map((e) => e.id));
+
+    // 캐시 확인
+    const cached = getCachedDailySentence(selectedDate, signature);
+    if (cached) {
+      setDailySentence(cached);
+      return;
+    }
+
+    // 이미 동일한 날짜에 대한 호출이 진행 중이면 중복 방지
+    if (inFlightRef.current === selectedDate) return;
+    inFlightRef.current = selectedDate;
+
+    let cancelled = false;
+    setIsSentenceLoading(true);
+
+    const payload = {
+      date: selectedDate,
+      entries: selectedEntries.map((entry) => ({
+        content: entry.content,
+        mainEmotion: entry.analysis.mainEmotion,
+        intensity: entry.analysis.intensity ?? 3,
+        empathyMessage: (
+          entry.analysis as typeof entry.analysis & { empathyMessage?: string }
+        ).empathyMessage,
+      })),
+    };
+
+    fetch("/api/generate-daily-sentence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`AI 호출 실패: ${res.status}`);
+        const data = await res.json();
+        const sentence = data.dailySentence;
+        if (typeof sentence !== "string" || sentence.trim().length === 0) {
+          throw new Error("dailySentence가 비어 있습니다.");
+        }
+        if (!cancelled) {
+          setDailySentence(sentence.trim());
+          saveDailySentenceToCache(selectedDate, signature, sentence.trim());
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          // 실패 시 fallback 문구 사용
+          setDailySentence(pickFallbackSentence(selectedEntries));
+          console.warn("daily-sentence 실패, fallback 사용:", (err as Error).message);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsSentenceLoading(false);
+          if (inFlightRef.current === selectedDate) inFlightRef.current = null;
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate, selectedEntries]);
+
+  // 그날의 한 문장 카드 표시용 값
+  const sentenceToDisplay = useMemo(() => {
+    if (selectedEntries.length === 0) return "";
+    if (dailySentence) return dailySentence;
+    // 로딩 중이거나 아직 캐시/AI 결과 없음 → fallback 사용
+    if (isSentenceLoading) return ""; // 표시는 로딩 문구로 대체
+    return pickFallbackSentence(selectedEntries);
+  }, [selectedEntries, dailySentence, isSentenceLoading]);
+
   const emotionStats = useMemo(() => {
     const counts: Record<string, number> = {};
     monthEntries.forEach((entry) => {
@@ -185,6 +306,82 @@ export default function DailyReport() {
       }))
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
   }, [entriesByDate]);
+
+  // 월간 기록 목록용 dailySentence 비동기 관리
+  // monthlyCards의 각 날짜에 대해 캐시를 우선 확인하고 없으면 생성 요청
+  useEffect(() => {
+    if (monthlyCards.length === 0) return;
+
+    // 이미 처리가 진행 중이면 중복 방지
+    const needed = monthlyCards
+      .filter((card) => {
+        if (card.entries.length === 0) return false;
+        const signature = buildEntrySignature(card.entries.map((e) => e.id));
+        const cached = getCachedDailySentence(card.dateKey, signature);
+        if (cached) {
+          // 캐시가 있어 monthlySentences에 아직 없으면 state에 반영
+          if (!monthlySentences[card.dateKey] || monthlySentences[card.dateKey] !== cached) {
+            setMonthlySentences((prev) => ({ ...prev, [card.dateKey]: cached }));
+          }
+          return false;
+        }
+        // 이미 in-flight면 스킵
+        if (monthlyInFlightRef.current.has(card.dateKey)) return false;
+        return true;
+      })
+      .map((card) => card.dateKey);
+
+    needed.forEach((dateKey) => {
+      const card = monthlyCards.find((c) => c.dateKey === dateKey);
+      if (!card) return;
+
+      monthlyInFlightRef.current.add(dateKey);
+      setMonthlyInFlightDates((prev) => new Set(prev).add(dateKey));
+      const signature = buildEntrySignature(card.entries.map((e) => e.id));
+
+      const payload = {
+        date: dateKey,
+        entries: card.entries.map((entry) => ({
+          content: entry.content,
+          mainEmotion: entry.analysis.mainEmotion,
+          intensity: entry.analysis.intensity ?? 3,
+          empathyMessage: (
+            entry.analysis as typeof entry.analysis & { empathyMessage?: string }
+          ).empathyMessage,
+        })),
+      };
+
+      fetch("/api/generate-daily-sentence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error(`AI 호출 실패: ${res.status}`);
+          const data = await res.json();
+          const sentence = data.dailySentence;
+          if (typeof sentence !== "string" || sentence.trim().length === 0) {
+            throw new Error("dailySentence가 비어 있습니다.");
+          }
+          if (!monthlyInFlightRef.current.has(dateKey)) return; // unmount 시 무시
+          const trimmed = sentence.trim();
+          setMonthlySentences((prev) => ({ ...prev, [dateKey]: trimmed }));
+          saveDailySentenceToCache(dateKey, signature, trimmed);
+        })
+        .catch((err) => {
+          // 실패 시에는 monthlySentences에는 넣지 않고 fallback 사용 (render에서 처리)
+          console.warn(`월간 목록 daily-sentence 실패(${dateKey}):`, (err as Error).message);
+        })
+        .finally(() => {
+          monthlyInFlightRef.current.delete(dateKey);
+          setMonthlyInFlightDates((prev) => {
+            const next = new Set(prev);
+            next.delete(dateKey);
+            return next;
+          });
+        });
+    });
+  }, [monthlyCards]);
 
   const showRewardToast = (message: string) => {
     setToastMessage(message);
@@ -212,6 +409,46 @@ export default function DailyReport() {
   const goCalendar = () => {
     setSelectedDate(null);
     setView("calendar");
+  };
+
+  // 데이터 새로고침 (삭제 후 사용)
+  const refreshData = () => {
+    applyAutoGrowth();
+    setAllEntries(getEntriesWithGrowth());
+  };
+
+  // 삭제 요청 (확인 모달 표시)
+  const requestDeleteEntry = (entry: DiaryEntry) => {
+    setDeleteTargetEntry(entry);
+    setShowDeleteModal(true);
+  };
+
+  // 삭제 실행
+  const handleDeleteEntry = () => {
+    if (!deleteTargetEntry) return;
+
+    const entryId = deleteTargetEntry.id;
+    const dateKey = getEntryDateKey(deleteTargetEntry);
+
+    // 1. 기록 삭제
+    const success = deleteEntry(entryId);
+    if (!success) {
+      showRewardToast("삭제에 실패했어요.");
+      setShowDeleteModal(false);
+      setDeleteTargetEntry(null);
+      return;
+    }
+
+    // 2. 해당 날짜의 dailySentence 캐시 무효화
+    invalidateDailySentenceCache(dateKey);
+
+    // 3. 데이터 새로고침
+    refreshData();
+
+    // 4. 모달 닫기 및 토스트 표시
+    setShowDeleteModal(false);
+    setDeleteTargetEntry(null);
+    showRewardToast("기록이 삭제되었어요.");
   };
 
   const renderTopBar = () => (
@@ -311,9 +548,10 @@ export default function DailyReport() {
               <button
                 key={dateKey}
                 className={`report-calendar-day ${dateKey === todayKey ? "is-today" : ""} ${hasEntries ? "has-entry" : ""}`}
+                style={hasEntries ? { background: 'transparent !important', boxShadow: 'none !important', border: 'none !important', backgroundColor: 'transparent !important' } : undefined}
                 onClick={() => openDetail(dateKey)}
               >
-                <span className="report-day-number">{day}</span>
+                {!hasEntries && <span className="report-day-number">{day}</span>}
                 {hasEntries && <FlowerMark reward={reward} emotion={emotion} />}
               </button>
             );
@@ -366,18 +604,38 @@ export default function DailyReport() {
           <EmptyReportState message="이 달에 작성한 기록이 아직 없어요." />
         </div>
       ) : (
-        monthlyCards.map((card) => (
-          <button key={card.dateKey} className="report-list-card" onClick={() => openDetail(card.dateKey)}>
-            <FlowerMark reward={card.reward} emotion={card.mainEmotion} size="md" />
-            <div className="min-w-0 flex-1 text-left">
-              <p className="text-xs font-semibold text-warm-brown/45">{getKoreanDateLabel(card.dateKey)}</p>
-              <h2 className="mt-1 text-lg font-black text-warm-brown">{card.mainEmotion || "마음 기록"}</h2>
-              <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-warm-brown/60">
-                {getSnippet(card.entries[card.entries.length - 1]?.content || "기록을 남긴 하루였어요.")}
-              </p>
-            </div>
-          </button>
-        ))
+        monthlyCards.map((card) => {
+          const cachedSentence = monthlySentences[card.dateKey];
+          const isInFlight = !cachedSentence && monthlyInFlightDates.has(card.dateKey);
+          let sentenceText = "";
+          if (cachedSentence) {
+            sentenceText = cachedSentence;
+          } else if (isInFlight) {
+            sentenceText = ""; // 로딩 문구로 표시
+          } else {
+            sentenceText = pickFallbackSentence(card.entries);
+          }
+
+          return (
+            <button key={card.dateKey} className="report-list-card" onClick={() => openDetail(card.dateKey)}>
+              <FlowerMark reward={card.reward} emotion={card.mainEmotion} size="md" />
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-xs font-semibold text-warm-brown/45">{getKoreanDateLabel(card.dateKey)}</p>
+                <h2 className="mt-1 text-lg font-black text-warm-brown">{card.mainEmotion || "마음 기록"}</h2>
+                <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-warm-brown/60">
+                  {!cachedSentence && isInFlight ? (
+                    <span className="inline-flex items-center gap-1.5 text-warm-brown/45">
+                      <span className="animate-pulse">✿</span>
+                      <span>그날의 마음을 정리하는 중이에요...</span>
+                    </span>
+                  ) : (
+                    sentenceText
+                  )}
+                </p>
+              </div>
+            </button>
+          );
+        })
       )}
     </section>
   );
@@ -412,7 +670,15 @@ export default function DailyReport() {
               <h2 className="mb-3 text-lg font-bold text-plant">그날의 기록</h2>
               <div className="space-y-3">
                 {selectedEntries.map((entry) => (
-                  <article key={entry.id} className="rounded-2xl bg-white/55 p-4">
+                  <article key={entry.id} className="relative rounded-2xl bg-white/55 p-4">
+                    <button
+                      onClick={() => requestDeleteEntry(entry)}
+                      className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full text-warm-brown/30 transition-colors hover:bg-red-50 hover:text-red-400"
+                      aria-label="기록 삭제"
+                      title="삭제"
+                    >
+                      🗑️
+                    </button>
                     <div className="mb-2 flex items-center justify-between text-xs text-warm-brown/45">
                       <span>{entry.analysis.mainEmotion}</span>
                       <span>
@@ -422,7 +688,7 @@ export default function DailyReport() {
                         })}
                       </span>
                     </div>
-                    <p className="text-sm leading-relaxed text-warm-brown/75">{entry.content}</p>
+                    <p className="text-sm leading-relaxed text-warm-brown/75 pr-6">{entry.content}</p>
                   </article>
                 ))}
               </div>
@@ -449,7 +715,12 @@ export default function DailyReport() {
             <section className="report-card sentence-card">
               <h2 className="mb-3 text-lg font-bold text-plant">그날의 한 문장</h2>
               <p className="rounded-2xl border border-amber-100/80 bg-white/50 px-4 py-4 text-center text-sm leading-relaxed text-warm-brown/75">
-                {getDailyMessage(selectedEntries)}
+                {isSentenceLoading ? (
+                  <span className="inline-flex items-center gap-2 text-warm-brown/50">
+                    <span className="animate-pulse">✿</span>
+                    <span>오늘의 마음을 정리하는 중이에요...</span>
+                  </span>
+                ) : sentenceToDisplay || getDailyMessage(selectedEntries)}
               </p>
             </section>
 
@@ -497,6 +768,38 @@ export default function DailyReport() {
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[9999] animate-fade-in">
           <div className="bg-white/95 backdrop-blur-sm px-4 py-2.5 rounded-full shadow-lg border border-beige/50 text-sm text-warm-brown whitespace-nowrap">
             {toastMessage}
+          </div>
+        </div>
+      )}
+
+      {/* 삭제 확인 모달 */}
+      {showDeleteModal && deleteTargetEntry && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm animate-fade-in">
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white/95 p-6 shadow-xl border border-beige/50">
+            <div className="mb-4 text-center">
+              <div className="mb-3 text-4xl">🗑️</div>
+              <h3 className="text-lg font-bold text-warm-brown">이 기록을 삭제할까요?</h3>
+              <p className="mt-2 text-sm text-warm-brown/60">
+                정원에 심어진 꽃도 함께 사라져요.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteTargetEntry(null);
+                }}
+                className="flex-1 rounded-xl border border-warm-brown/10 bg-white/80 px-4 py-3 text-sm font-bold text-warm-brown/60 transition-colors hover:bg-warm-brown/5"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteEntry}
+                className="flex-1 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-500 transition-colors hover:bg-red-100"
+              >
+                삭제하기
+              </button>
+            </div>
           </div>
         </div>
       )}

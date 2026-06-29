@@ -77,6 +77,43 @@ function getRenderBloomScale(entry: DiaryEntry): number {
   return BLOOM_SCALE_BY_INTENSITY[getRenderIntensity(entry)] || BLOOM_SCALE_BY_INTENSITY[3];
 }
 
+/**
+ * 기록의 날짜/시간을 말풍선용으로 포맷합니다.
+ * 형식: MM.DD HH:mm (24시간제, 연도 생략)
+ * 예: 06.29 14:04
+ */
+function formatRecordTime(isoString?: string): string {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "";
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${month}.${day} ${hours}:${minutes}`;
+}
+
+/**
+ * 공감 메시지를 가져옵니다.
+ * 우선순위: analysis.empathyMessage → gardenReward.empathyMessage → gardenReward.description → 기본 문구
+ */
+function getEmpathyMessage(entry: DiaryEntry): string {
+  const analysisEmpathy = (entry.analysis as DiaryEntry["analysis"] & { empathyMessage?: string })
+    .empathyMessage;
+  const rewardEmpathy = (
+    entry.analysis.gardenReward as typeof entry.analysis.gardenReward & { empathyMessage?: string }
+  ).empathyMessage;
+  const description = entry.analysis.gardenReward.description;
+
+  if (analysisEmpathy && analysisEmpathy.trim().length > 0) return analysisEmpathy;
+  if (rewardEmpathy && rewardEmpathy.trim().length > 0) return rewardEmpathy;
+  if (description && description.trim().length > 0) return description;
+  return "이 마음이 정원에 조용히 남아 있어요.";
+}
+
 function getPlantImageSrc(entry: DiaryEntry): string | null {
   const reward = entry.analysis.gardenReward;
   const stage = reward.growthStage || "seed";
@@ -467,7 +504,7 @@ export default function MindGarden({ lastPlantedEntry }: MindGardenProps) {
             </div>
           )}
 
-          <div className="garden-title pointer-events-none">마음정원</div>
+          <div className="garden-title pointer-events-none">마음 정원</div>
           <div className="garden-cloud garden-cloud-left" />
           <div className="garden-cloud garden-cloud-right" />
           <div className="garden-fence" />
@@ -553,14 +590,28 @@ export default function MindGarden({ lastPlantedEntry }: MindGardenProps) {
                           {selectedFlower.entry.analysis.gardenReward.growthStage === "bloom" && " 꽃"}
                         </div>
                         <div className="text-[10px] text-warm-brown/50">
-                          {selectedFlower.entry.analysis.mainEmotion}
-                          {" · "}
-                          감정 깊이 {selectedFlower.entry.analysis.intensity ?? 3}
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                            <span>{selectedFlower.entry.analysis.mainEmotion}</span>
+                            <span>·</span>
+                            <span>깊이 {selectedFlower.entry.analysis.intensity ?? 3}</span>
+                            {(() => {
+                              const timeStr = formatRecordTime(
+                                selectedFlower.entry.createdAt ||
+                                  selectedFlower.entry.analysis.gardenReward.plantedAt
+                              );
+                              return timeStr ? (
+                                <>
+                                  <span>·</span>
+                                  <span className="text-[9px]">{timeStr}</span>
+                                </>
+                              ) : null;
+                            })()}
+                          </span>
                         </div>
                       </div>
                     </div>
-                    <p className="text-[11px] text-warm-brown/70 leading-relaxed">
-                      {selectedFlower.entry.analysis.gardenReward.description}
+                    <p className="text-[11px] text-warm-brown/70 leading-relaxed break-words">
+                      {getEmpathyMessage(selectedFlower.entry)}
                     </p>
                     <div className="mt-2 pt-2 border-t border-warm-brown/10">
                       <p className="text-[10px] text-warm-brown/50 italic">
