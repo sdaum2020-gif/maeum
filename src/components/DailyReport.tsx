@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
-import { applyAutoGrowth, getEntriesWithGrowth, deleteEntry } from "@/lib/storage";
+import { applyAutoGrowth, getEntriesWithGrowth, deleteEntry, getEntryDateKey } from "@/lib/storage";
 import { DiaryEntry, GardenReward, GrowthStage } from "@/types/emotion";
 import { claimReportReward, getTodayRewardHistory } from "@/lib/waterRewards";
 import {
@@ -10,6 +10,7 @@ import {
   saveDailySentenceToCache,
   invalidateDailySentenceCache,
 } from "@/lib/dailySentenceCache";
+import CloudBackupBanner from "@/components/CloudBackupBanner";
 
 type ReportView = "calendar" | "stats" | "list" | "detail";
 
@@ -38,9 +39,7 @@ function getDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function getEntryDateKey(entry: DiaryEntry) {
-  return entry.createdAt.split("T")[0];
-}
+// getEntryDateKey는 storage.ts에서 import하여 사용
 
 function getMonthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -762,6 +761,11 @@ export default function DailyReport() {
         {view === "stats" && renderStats()}
         {view === "list" && renderList()}
         {view === "detail" && renderDetail()}
+      </div>
+
+      {/* 클라우드 백업 안내 배너 (하단 고정, 로그인 안 한 경우만 표시) */}
+      <div className="mx-auto max-w-md mt-8 mb-4">
+        <CloudBackupBanner />
       </div>
 
       {showToast && (

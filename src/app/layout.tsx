@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/lib/AuthContext";
 
 export const metadata: Metadata = {
   title: "마음정원 - 감정일기",
@@ -14,9 +15,11 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="min-h-screen">
-        <div className="max-w-md mx-auto min-h-screen bg-ivory/50">
-          {children}
-        </div>
+        <AuthProvider>
+          <div className="min-h-screen bg-ivory/50">
+            {children}
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

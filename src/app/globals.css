@@ -4,12 +4,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tailwind preflight가 button에 적용하는 배경을 완전히 제거 */
-/* 모든 button 요소에 투명 배경 강제 적용 */
-button,
-button:hover,
-button:focus,
-button:active {
+/* 리포트 달력 날짜 셀 버튼에만 투명 배경 적용 */
+/* 마음정원 액션 버튼 등 다른 버튼은 각자 스타일 유지 */
+.report-calendar-day,
+.report-calendar-day:hover,
+.report-calendar-day:focus,
+.report-calendar-day:active {
   background-color: transparent !important;
   background-image: none !important;
   background: transparent !important;
@@ -34,6 +34,15 @@ body {
     radial-gradient(circle at 18% 18%, rgba(255, 244, 208, 0.72) 0 8%, transparent 18%),
     radial-gradient(ellipse at 50% 28%, rgba(255, 238, 196, 0.52) 0 16%, transparent 34%),
     linear-gradient(to bottom, #cfe6f1 0%, #f8dfbd 24%, #a9d978 25%, #9ece62 58%, #87bd52 100%);
+}
+
+/* 랜딩 페이지 히어로 배경 */
+.landing-hero {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 250, 205, 0.6) 0 12%, transparent 30%),
+    radial-gradient(circle at 80% 15%, rgba(144, 238, 144, 0.25) 0 14%, transparent 32%),
+    radial-gradient(circle at 50% 90%, rgba(255, 245, 231, 0.7) 0 18%, transparent 40%),
+    linear-gradient(180deg, #fffdf0 0%, #f6f5dc 50%, #edf7df 100%);
 }
 
 .mind-garden-home::before {

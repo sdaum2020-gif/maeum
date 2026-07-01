@@ -40,6 +40,7 @@ export interface DiaryEntry {
   id: string;
   content: string;
   createdAt: string;
+  recordDate?: string; // 사용자가 선택한 기록 날짜 (YYYY-MM-DD 형식)
   analysis: EmotionAnalysis;
 }
 

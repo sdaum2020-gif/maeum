@@ -97,19 +97,35 @@ export function saveEntry(entry: DiaryEntry): void {
 }
 
 /**
+ * 기록의 날짜를 가져옵니다.
+ * 우선순위: recordDate > createdAt에서 추출 > plantedAt에서 추출
+ */
+export function getEntryDateKey(entry: DiaryEntry): string {
+  if (entry.recordDate) return entry.recordDate;
+  if (entry.createdAt) return entry.createdAt.split("T")[0];
+  if (entry.analysis.gardenReward.plantedAt) {
+    return entry.analysis.gardenReward.plantedAt.split("T")[0];
+  }
+  return new Date().toISOString().split("T")[0];
+}
+
+/**
  * 특정 날짜의 기록들을 가져옵니다.
+ * recordDate 기준으로 필터링합니다.
  */
 export function getEntriesByDate(date: string): DiaryEntry[] {
   const entries = getEntries();
-  return entries.filter((entry) => entry.createdAt.startsWith(date));
+  return entries.filter((entry) => getEntryDateKey(entry) === date);
 }
 
 /**
  * 오늘 날짜의 기록들을 가져옵니다.
+ * createdAt 기준으로 오늘 작성한 기록을 찾습니다.
  */
 export function getTodayEntries(): DiaryEntry[] {
   const today = new Date().toISOString().split("T")[0];
-  return getEntriesByDate(today);
+  const entries = getEntries();
+  return entries.filter((entry) => entry.createdAt.split("T")[0] === today);
 }
 
 /**
