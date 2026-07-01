@@ -99,13 +99,14 @@ export interface BackupResult {
   success: boolean;
   totalCount: number;
   backedUpCount: number;
-  skippedCount: number;
+  deletedCount: number;
   error?: string;
 }
 
 /**
  * localStorage의 감정 기록을 Supabase에 백업
- * 중복 기준: user_id + local_id
+ * 전략: 기존 user_id의 데이터를 모두 삭제한 후, localStorage의 전체 기록을 새로 삽입
+ * 이를 통해 로컬에서 삭제된 기록이 Supabase에도 남지 않게 함
  */
 export async function backupEntriesToSupabase(userId: string): Promise<BackupResult> {
   console.log("[CloudBackup] 백업 시작, userId:", userId);
@@ -113,64 +114,65 @@ export async function backupEntriesToSupabase(userId: string): Promise<BackupRes
   try {
     const entries = getEntries();
     console.log("[CloudBackup] localStorage에서 가져온 기록 수:", entries.length);
-    
+
+    // 1단계: 해당 user_id의 기존 emotion_records를 모두 삭제
+    console.log("[CloudBackup] 기존 백업 데이터 삭제 시작, userId:", userId);
+    const { count: deletedCount, error: deleteError } = await supabase
+      .from("emotion_records")
+      .delete()
+      .eq("user_id", userId);
+
+    if (deleteError) {
+      console.error("[CloudBackup] 기존 데이터 삭제 실패:", deleteError.message);
+      return {
+        success: false,
+        totalCount: entries.length,
+        backedUpCount: 0,
+        deletedCount: 0,
+        error: `기존 데이터 삭제 실패: ${deleteError.message}`,
+      };
+    }
+
+    console.log("[CloudBackup] 기존 데이터 삭제 완료:", deletedCount, "개");
+
+    // 2단계: localStorage의 전체 기록을 새로 삽입
     if (entries.length === 0) {
+      console.log("[CloudBackup] localStorage에 기록이 없음. 백업 완료.");
       return {
         success: true,
         totalCount: 0,
         backedUpCount: 0,
-        skippedCount: 0,
+        deletedCount: deletedCount || 0,
       };
     }
 
     const rows = entries.map((entry) => mapEntryToRow(entry, userId));
     console.log("[CloudBackup] 변환된 행 수:", rows.length);
 
-    let backedUpCount = 0;
-    let skippedCount = 0;
+    // bulk insert로 한 번에 삽입
+    const { error: insertError } = await supabase
+      .from("emotion_records")
+      .insert(rows);
 
-    // 각 기록을 개별 처리 (중복 방지)
-    for (const row of rows) {
-      if (row.local_id) {
-        // 이미 존재하는지 확인
-        const { data: existing, error: fetchError } = await supabase
-          .from("emotion_records")
-          .select("id")
-          .eq("user_id", row.user_id)
-          .eq("local_id", row.local_id)
-          .maybeSingle();
-
-        if (fetchError) {
-          console.warn("[CloudBackup] 기록 확인 중 오류:", fetchError.message);
-        } else if (existing) {
-          console.log("[CloudBackup] 이미 존재하는 기록 스킵:", row.local_id);
-          skippedCount++;
-          continue;
-        }
-      }
-
-      // 새로 삽입
-      console.log("[CloudBackup] 삽입 시도:", row.local_id);
-      const { error: insertError } = await supabase
-        .from("emotion_records")
-        .insert(row);
-
-      if (insertError) {
-        console.error("[CloudBackup] 삽입 실패:", insertError.message, "로컬ID:", row.local_id);
-        skippedCount++;
-      } else {
-        backedUpCount++;
-        console.log("[CloudBackup] 삽입 성공:", row.local_id);
-      }
+    if (insertError) {
+      console.error("[CloudBackup] 삽입 실패:", insertError.message);
+      return {
+        success: false,
+        totalCount: entries.length,
+        backedUpCount: 0,
+        deletedCount: deletedCount || 0,
+        error: `기록 삽입 실패: ${insertError.message}`,
+      };
     }
 
-    console.log("[CloudBackup] 백업 완료:", entries.length, "중", backedUpCount, "성공,", skippedCount, "스");
+    const backedUpCount = rows.length;
+    console.log("[CloudBackup] 백업 완료:", backedUpCount, "개 기록 삽입 성공");
 
     return {
       success: true,
       totalCount: entries.length,
       backedUpCount,
-      skippedCount,
+      deletedCount: deletedCount || 0,
     };
   } catch (error) {
     console.error("[CloudBackup] 백업 중 치명적 오류:", error);
@@ -180,7 +182,7 @@ export async function backupEntriesToSupabase(userId: string): Promise<BackupRes
       success: false,
       totalCount: 0,
       backedUpCount: 0,
-      skippedCount: 0,
+      deletedCount: 0,
       error: errorMessage,
     };
   }

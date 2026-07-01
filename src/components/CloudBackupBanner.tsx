@@ -88,7 +88,7 @@ export default function CloudBackupBanner() {
         success: false,
         totalCount: 0,
         backedUpCount: 0,
-        skippedCount: 0,
+        deletedCount: 0,
         error: error instanceof Error ? error.message : "알 수 없는 오류",
       });
       setShowResult(true);
@@ -228,7 +228,7 @@ export default function CloudBackupBanner() {
             }`}>
               {backupResult.success ? (
                 <span>
-                  ✓ 기록 백업이 완료되었어요. ({backupResult.backedUpCount}개 기록 백업 완료)
+                  ✓ 현재 기기의 기록이 백업되었습니다. ({backupResult.backedUpCount}개 기록 저장 완료)
                 </span>
               ) : (
                 <span>
