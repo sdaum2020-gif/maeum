@@ -199,6 +199,48 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* 물방울 획득 방법 섹션 */}
+        <section className="relative px-5 py-16 bg-gradient-to-b from-transparent via-sky-50/30 to-transparent">
+          <div className="text-center">
+            <span className="mb-3 inline-block rounded-full bg-sky-100/60 px-3 py-1 text-xs font-medium text-sky-700">
+              💧 물방울 가이드
+            </span>
+            <h2 className="mb-3 text-2xl font-bold text-warm-brown">
+              물방울을 모아 꽃에 물을 주세요
+            </h2>
+            <p className="mb-8 text-sm text-warm-brown/60 leading-relaxed">
+              마음을 기록할수록 정원이 자라나요
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <WaterRewardCard
+              emoji="☀️"
+              title="하루 기본 물방울"
+              desc="매일 1개, 정원에 도착해요"
+            />
+            <WaterRewardCard
+              emoji="📝"
+              title="감정 기록 보상"
+              desc="첫 기록 +1, 두 번째 기록 +1"
+            />
+            <WaterRewardCard
+              emoji="💜"
+              title="깊은 마음 보상"
+              desc="강한 감정을 기록하면 +1"
+            />
+            <WaterRewardCard
+              emoji="📊"
+              title="리포트 확인 보상"
+              desc="오늘의 리포트를 확인하면 +1"
+            />
+          </div>
+
+          <p className="mt-8 text-center text-xs text-warm-brown/50">
+            하루 최대 5개까지 받을 수 있어요 💧
+          </p>
+        </section>
+
         {/* 따뜻한 후킹 섹션 */}
         <section className="relative px-5 py-16">
           <div className="text-center">
@@ -350,6 +392,29 @@ function FeatureCard({
       <div>
         <h3 className="mb-1.5 text-base font-bold text-warm-brown">{title}</h3>
         <p className="text-xs leading-relaxed text-warm-brown/70">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+// 물방울 보상 카드 컴포넌트
+function WaterRewardCard({
+  emoji,
+  title,
+  desc,
+}: {
+  emoji: string;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border border-sky-100/60 bg-white/70 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:shadow-md">
+      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-sky-50/80 text-xl shadow-sm">
+        {emoji}
+      </div>
+      <div className="flex-1">
+        <h3 className="mb-0.5 text-sm font-bold text-warm-brown">{title}</h3>
+        <p className="text-xs leading-relaxed text-warm-brown/60">{desc}</p>
       </div>
     </div>
   );
