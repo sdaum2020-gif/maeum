@@ -15,12 +15,14 @@ export default function AuthCallbackPage() {
         setError(error.message);
         return;
       }
-      // 로그인 성공 시 이전 페이지로 이동 (referrer가 없으면 /garden)
-      const referrer = document.referrer;
-      if (referrer && referrer.includes(window.location.origin)) {
-        // 동일 도메인의 이전 페이지로 이동
-        const referrerPath = new URL(referrer).pathname;
-        router.push(referrerPath);
+      
+      // sessionStorage에서 저장된 경로 확인 (signInWithGoogle에서 저장)
+      const returnPath = sessionStorage.getItem('returnPath');
+      
+      if (returnPath) {
+        // 저장된 경로가 있으면 해당 화면으로 이동
+        sessionStorage.removeItem('returnPath'); // 사용 후 제거
+        router.push(returnPath);
       } else {
         // 폴백: 정원 페이지로 이동
         router.push("/garden");

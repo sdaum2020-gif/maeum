@@ -40,12 +40,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = async () => {
-    // 현재 페이지 URL에서 hash 제거 (OAuth 콜백 시 hash가 포함될 수 있음)
-    const currentUrl = window.location.href.split('#')[0];
+    // 현재 경로를 sessionStorage에 저장 (로그인 후 복원용)
+    const currentPath = window.location.pathname;
+    sessionStorage.setItem('returnPath', currentPath);
+    
+    // redirectTo는 반드시 절대 URL로 설정 (프로토콜 포함)
+    // Supabase Auth가 올바르게 처리할 수 있도록 origin + pathname만 사용
+    const redirectTo = `${window.location.origin}${currentPath}`;
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: currentUrl,
+        redirectTo: redirectTo,
       },
     });
     if (error) {
