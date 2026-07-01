@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import EmotionInput from "@/components/EmotionInput";
 import AnalysisResult from "@/components/AnalysisResult";
 import MindGarden from "@/components/MindGarden";
@@ -8,10 +9,12 @@ import DailyReport from "@/components/DailyReport";
 import { DiaryEntry } from "@/types/emotion";
 import { getTodayEntries } from "@/lib/storage";
 import { grantEntryReward, grantDeepEmotionReward } from "@/lib/waterRewards";
+import { supabase } from "@/lib/supabase";
 
 type ViewType = "input" | "result" | "garden" | "report";
 
 export default function GardenPage() {
+  const router = useRouter();
   const [currentView, setCurrentView] = useState<ViewType>("garden");
   const [lastEntry, setLastEntry] = useState<DiaryEntry | null>(null);
   const [isMobile, setIsMobile] = useState(true);
@@ -24,6 +27,25 @@ export default function GardenPage() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // OAuth 콜백 후 URL hash 처리 및 세션 확인
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      // URL에 hash가 있는 경우 (OAuth 콜백)
+      if (window.location.hash) {
+        // Supabase가 자동으로 hash에서 토큰을 추출하여 세션 설정
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        // 세션 확인 후 URL hash 제거
+        if (session) {
+          // hash를 제거하고 깔끔한 URL로 정리
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    };
+
+    handleAuthCallback();
+  }, [router]);
 
   const handleEntrySaved = (entry: DiaryEntry) => {
     setLastEntry(entry);
