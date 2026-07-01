@@ -397,7 +397,6 @@ export default function DailyReport() {
   const moveMonth = (amount: number) => {
     setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + amount, 1));
     setSelectedDate(null);
-    setView("calendar");
   };
 
   const openDetail = (dateKey: string) => {
