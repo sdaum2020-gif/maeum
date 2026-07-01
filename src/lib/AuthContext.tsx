@@ -40,10 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = async () => {
+    // 현재 페이지 URL에서 hash 제거 (OAuth 콜백 시 hash가 포함될 수 있음)
+    const currentUrl = window.location.href.split('#')[0];
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/garden`,
+        redirectTo: currentUrl,
       },
     });
     if (error) {

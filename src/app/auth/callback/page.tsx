@@ -15,8 +15,16 @@ export default function AuthCallbackPage() {
         setError(error.message);
         return;
       }
-      // 로그인 성공 시 정원 페이지로 이동
-      router.push("/garden");
+      // 로그인 성공 시 이전 페이지로 이동 (referrer가 없으면 /garden)
+      const referrer = document.referrer;
+      if (referrer && referrer.includes(window.location.origin)) {
+        // 동일 도메인의 이전 페이지로 이동
+        const referrerPath = new URL(referrer).pathname;
+        router.push(referrerPath);
+      } else {
+        // 폴백: 정원 페이지로 이동
+        router.push("/garden");
+      }
     };
 
     handleCallback();
