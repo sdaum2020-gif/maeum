@@ -206,6 +206,35 @@ export function getTimeUntilNextGrowth(
 }
 
 /**
+ * 현재 성장 단계의 진행률(0~100)을 계산합니다.
+ * - seed: plantedAt ~ seedToSproutMs 기준
+ * - sprout: seedToSproutMs ~ seedToSproutMs + sproutToBloomMs 기준
+ * - bloom: 항상 100 (진행바 숨김용)
+ */
+export function getGrowthProgress(
+  entry: DiaryEntry,
+  now: number = Date.now()
+): number {
+  const stage = entry.analysis.gardenReward.growthStage || "seed";
+  if (stage === "bloom") return 100;
+
+  const plantedTime = getPlantedTime(entry);
+  const elapsed = now - plantedTime;
+  const profile = getGrowthProfile(entry);
+
+  if (stage === "seed") {
+    const total = profile.seedToSproutMs;
+    const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
+    return progress;
+  }
+
+  // sprout
+  const total = profile.seedToSproutMs + profile.sproutToBloomMs;
+  const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
+  return progress;
+}
+
+/**
  * 남은 시간을 읽기 좋은 문자열로 포맷합니다.
  */
 function formatRemainingTime(ms: number): string {

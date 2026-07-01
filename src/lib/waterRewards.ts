@@ -98,7 +98,7 @@ function addWaterDrops(amount: number): void {
 }
 
 /** 물방울을 사용합니다. */
-function useWaterDrops(amount: number): boolean {
+export function useWaterDrops(amount: number): boolean {
   const state = getWaterState();
   if (state.waterDrops < amount) return false;
   state.waterDrops -= amount;

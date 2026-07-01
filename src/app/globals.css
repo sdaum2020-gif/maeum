@@ -560,6 +560,16 @@ body {
   animation: bounceSubtle 2s ease-in-out infinite;
 }
 
+/* 물방울 사용 모드에서 부드러운 펄스 애니메이션 */
+@keyframes pulseSoft {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.85; }
+}
+
+.animate-pulse-soft {
+  animation: pulseSoft 1.5s ease-in-out infinite;
+}
+
 /* 정원 관련 스타일 추가 */
 @layer utilities {
   .garden-pattern {

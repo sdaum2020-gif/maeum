@@ -8,7 +8,7 @@ import {
   updateEntryPosition,
 } from "@/lib/storage";
 import { DiaryEntry, GardenState, FlowerPosition } from "@/types/emotion";
-import { getGrowthStatusMessage } from "@/lib/gardenGrowth";
+import { getGrowthStatusMessage, getGrowthProgress } from "@/lib/gardenGrowth";
 import {
   getWaterDrops,
   claimDailyWater,
@@ -122,6 +122,37 @@ function getPlantImageSrc(entry: DiaryEntry): string | null {
   return PLANT_IMAGE_BY_TYPE[reward.type] || null;
 }
 
+/**
+ * 성장 진행바 컴포넌트
+ * - seed/sprout 상태일 때만 표시
+ * - 오브젝트 상단에 위치
+ */
+function GrowthProgressBar({ entry }: { entry: DiaryEntry }) {
+  const stage = entry.analysis.gardenReward.growthStage || "seed";
+  
+  // bloom 상태에서는 진행바 숨김
+  if (stage === "bloom") return null;
+  
+  const progress = getGrowthProgress(entry);
+  
+  return (
+    <div
+      className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
+      style={{
+        bottom: "calc(100% + 10px)",
+        width: "48px",
+      }}
+    >
+      <div className="h-[5px] w-full rounded-full bg-black/10 backdrop-blur-sm overflow-hidden">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-emerald-400 transition-all duration-1000 ease-linear"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function PlantObject({ entry, index }: { entry: DiaryEntry; index: number }) {
   const [imageFailed, setImageFailed] = useState(false);
   const stage = entry.analysis.gardenReward.growthStage || "seed";
@@ -192,6 +223,9 @@ export default function MindGarden({ lastPlantedEntry }: MindGardenProps) {
   const [dailyBaseClaimed, setDailyBaseClaimed] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [showToast, setShowToast] = useState(false);
+  
+  // 물방울 사용 모드 (사용자가 직접 식물 선택)
+  const [isWateringMode, setIsWateringMode] = useState(false);
 
   // 배치 모드 관련 상태
   const [isEditMode, setIsEditMode] = useState(false);
@@ -278,7 +312,14 @@ export default function MindGarden({ lastPlantedEntry }: MindGardenProps) {
     }
   };
 
-  // 물방울 사용하기 (1개 소비하여 성장)
+  // 물방울 사용 모드 토글
+  const toggleWateringMode = () => {
+    if (waterDrops <= 0 || entries.length === 0) return;
+    setIsWateringMode((prev) => !prev);
+    setSelectedFlower(null);
+  };
+
+  // 물방울 사용하기 (1개 소비하여 성장) - 자동 선택
   const handleUseWaterDrop = () => {
     const result: UseWaterResult = useWaterDropOnGarden();
     if (result.success) {
@@ -290,6 +331,48 @@ export default function MindGarden({ lastPlantedEntry }: MindGardenProps) {
     } else {
       showRewardToast(result.message);
     }
+  };
+
+  // 특정 식물에 물방울 사용하기
+  const handleUseWaterDropOnPlant = (entry: DiaryEntry) => {
+    const stage = entry.analysis.gardenReward.growthStage;
+    
+    // 이미 꽃이 핀 경우
+    if (stage === "bloom") {
+      showRewardToast("이미 꽃이 핀 식물이에요. 🌺");
+      return;
+    }
+
+    // 물방울 확인
+    if (waterDrops <= 0) {
+      showRewardToast("사용할 수 있는 물방울이 없어요.");
+      return;
+    }
+
+    // dynamic import로 순환 참조 방지
+    const { updateEntryGrowthStage } = require("@/lib/storage");
+    
+    const newStage = stage === "seed" ? "sprout" : "bloom";
+    updateEntryGrowthStage(entry.id, newStage);
+    
+    // 물방울 차감
+    const { useWaterDrops } = require("@/lib/waterRewards");
+    useWaterDrops(1);
+    
+    const plantName = entry.analysis.gardenReward.name;
+    const stageName = stage === "seed" ? "씨앗" : "새싹";
+    const newStageName = newStage === "sprout" ? "새싹" : "꽃";
+    
+    if (newStage === "bloom") {
+      showRewardToast(`물방울을 주었어요. ${plantName} ${stageName}이(가) ${plantName} ${newStageName}으로 피어났어요. ${entry.analysis.gardenReward.emoji}`);
+    } else {
+      showRewardToast(`물방울을 주었어요. ${plantName} ${stageName}이(가) ${newStageName}이(가) 되었어요. 🌿`);
+    }
+    
+    setIsWateringMode(false);
+    setTimeout(() => {
+      refreshData();
+    }, 500);
   };
 
   // 배치 모드 토글
@@ -386,6 +469,12 @@ export default function MindGarden({ lastPlantedEntry }: MindGardenProps) {
   const handleFlowerClick = (entry: DiaryEntry, e: React.MouseEvent) => {
     if (isEditMode) return; // 배치 모드에서는 클릭 무시
     
+    // 물방울 사용 모드에서는 식물 성장 처리
+    if (isWateringMode) {
+      handleUseWaterDropOnPlant(entry);
+      return;
+    }
+    
     e.stopPropagation();
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     const canvasRect = (e.target as HTMLElement).closest('.garden-canvas')?.getBoundingClientRect();
@@ -461,17 +550,19 @@ export default function MindGarden({ lastPlantedEntry }: MindGardenProps) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                handleUseWaterDrop();
+                toggleWateringMode();
               }}
               disabled={waterDrops <= 0 || entries.length === 0}
               className={`garden-action-button ${
-                waterDrops <= 0 || entries.length === 0
+                isWateringMode
+                  ? "border-blue-200 bg-blue-100/90 text-blue-700 shadow-md ring-2 ring-blue-300/50"
+                  : waterDrops <= 0 || entries.length === 0
                   ? "border-emerald-100/80 bg-emerald-50/80 text-emerald-300"
                   : "border-emerald-100 bg-emerald-50/90 text-emerald-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
               }`}
             >
               <span aria-hidden="true">💧</span>
-              <span>물방울 사용하기</span>
+              <span>{isWateringMode ? "식물을 선택하세요" : "물방울 사용하기"}</span>
             </button>
 
             <button
@@ -499,6 +590,17 @@ export default function MindGarden({ lastPlantedEntry }: MindGardenProps) {
               <div className="bg-amber-100/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-amber-200/50">
                 <p className="text-xs text-amber-700 font-medium">
                   ✨ 꽃을 끌어서 원하는 자리에 놓아보세요
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 물방울 사용 모드 안내 배지 */}
+          {isWateringMode && (
+            <div className="absolute left-1/2 top-28 z-50 -translate-x-1/2 animate-fade-in">
+              <div className="bg-blue-100/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-blue-200/50">
+                <p className="text-xs text-blue-700 font-medium">
+                  💧 물을 주고 싶은 식물을 클릭하세요
                 </p>
               </div>
             </div>
@@ -540,12 +642,19 @@ export default function MindGarden({ lastPlantedEntry }: MindGardenProps) {
                 const dragScale = isDragging ? 1.12 : 1;
                 const finalScale = pos.scale * bloomScale * dragScale;
 
+                // 물방울 사용 모드에서 성장 가능한 식물인지 확인
+                const canWater = isWateringMode && entry.analysis.gardenReward.growthStage !== "bloom";
+
                 return (
                   <div
                     key={entry.id}
                     className={`plant-object-wrapper absolute transition-transform duration-200 ${
                       isEditMode
                         ? "cursor-grab active:cursor-grabbing"
+                        : isWateringMode
+                        ? canWater
+                          ? "cursor-pointer hover:scale-115 animate-pulse-soft"
+                          : "cursor-not-allowed opacity-60"
                         : "cursor-pointer hover:scale-110"
                     } ${isDragging ? "scale-115 z-[900]" : ""}`}
                     style={{
@@ -562,6 +671,12 @@ export default function MindGarden({ lastPlantedEntry }: MindGardenProps) {
                     {isEditMode && !isDragging && (
                       <div className="absolute inset-0 -m-2 rounded-full border-2 border-dashed border-amber-300/50 animate-pulse pointer-events-none" />
                     )}
+                    
+                    {/* 물방울 사용 모드에서 성장 가능한 식물 하이라이트 */}
+                    {isWateringMode && canWater && !isDragging && (
+                      <div className="absolute inset-0 -m-3 rounded-full border-2 border-dashed border-blue-400/60 animate-pulse pointer-events-none" />
+                    )}
+                    <GrowthProgressBar entry={entry} />
                     <PlantObject entry={entry} index={index} />
                   </div>
                 );
